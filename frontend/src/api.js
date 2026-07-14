@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'https://apex-marketing-os.onrender.com'; // FastAPI default port
+// Ensure this points to your backend URL (localhost for dev, Render for production)
+const API_URL = 'https://apex-marketing-os.vercel.app/'; 
 
 export const checkBackendStatus = async () => {
     try {
@@ -12,13 +13,17 @@ export const checkBackendStatus = async () => {
     }
 };
 
-export const uploadDataForIngestion = async (files) => {
+export const uploadDataForIngestion = async (files, brandName, brandTone) => {
     const formData = new FormData();
     
     // Append multiple files to the same 'files' key
     Array.from(files).forEach((file) => {
         formData.append('files', file); 
     });
+
+    // Inject Brand Memory into the payload
+    formData.append('brand_name', brandName || "Generic Brand");
+    formData.append('brand_tone', brandTone || "Professional");
 
     try {
         const response = await axios.post(`${API_URL}/api/ingest/`, formData, {
