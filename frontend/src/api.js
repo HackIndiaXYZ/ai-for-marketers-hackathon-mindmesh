@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Ensure this points to your backend URL (localhost for dev, Render for production)
-const API_URL = 'https://apex-marketing-os.vercel.app/'; 
+const API_URL = 'https://apex-marketing-os.onrender.com'; 
 
 export const checkBackendStatus = async () => {
     try {
