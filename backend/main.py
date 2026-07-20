@@ -61,7 +61,7 @@ class SimulationRequest(BaseModel):
 class DeployRequest(BaseModel):
     strategy: str    
 
-def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: str) -> str:
+def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: str, user_prompt: str) -> str:
     """Agent 1: Lead Quantitative Data Scientist (Predictive Feature Engineer)"""
     if not gemini_client:
         return f"Ingested {file_names} successfully (Gemini API Key missing, running in local fallback mode)."
@@ -71,12 +71,13 @@ def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: st
     You are reviewing a batch of raw marketing datasets. Your objective is to engineer predictive features, identify statistical anomalies, and prepare a strict quantitative architecture for the diagnostic team.
     
     Files Uploaded: {file_names}
+    User's Defined Problem/Context: {user_prompt if user_prompt else "None provided. You must infer the business context entirely from the raw data."}
     
     Data Schema & Samples:
     {multi_file_context}
     
     CRITICAL INSTRUCTIONS:
-    You must perform a rigorous Forensic Data Profile. You are evaluating this data to find leading indicators of revenue loss.
+    You must perform a rigorous Forensic Data Profile. Use the User's Defined Problem (if provided) as your primary lens for investigation.
     Output STRICTLY valid JSON. Do not use markdown formatting blocks (no ```json).
     
     Follow this exact JSON schema:
@@ -85,13 +86,12 @@ def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: st
         "business_theme": "The exact quantitative business context (e.g., B2B SaaS Retention, High-Volume E-commerce Acquisition).",
         "relational_map": "Identification of probable primary/foreign keys and how the datasets interconnect structurally.",
         "data_hygiene_and_anomalies": "Specific assessment of missing values, formatting errors, or statistical outliers visible in the sample.",
-        "critical_blind_spots": "Identify exactly what necessary data is missing from the environment (e.g., 'We have acquisition cost, but lack time-to-conversion data').",
+        "critical_blind_spots": "Identify exactly what necessary data is missing from the environment.",
         "signal_extraction": "The single most critical financial story or risk vector hidden in this structural architecture."
     }}
     """
     
     try:
-        # Temperature dropped to 0.1 to enforce strict, deterministic statistical analysis
         response = gemini_client.models.generate_content(
             model="gemini-3.5-flash",
             contents=prompt,
@@ -99,23 +99,15 @@ def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: st
         )
         
         raw_text = response.text
-        
         import re
         match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-        if not match:
-            # Fallback parsing in case the LLM breaks schema
-            return raw_text
-            
-        clean_json = match.group(0)
-        
-        # Returning the raw JSON string ensures Agent 2 receives a highly structured, 
-        # machine-readable dossier for its Root Cause Analysis.
-        return clean_json
+        if not match: return raw_text
+        return match.group(0)
         
     except Exception as e:
         logger.error(f"Gemini API Execution Error: {str(e)}")
         return f"Parsed data structure successfully, but Gemini API returned an error: {str(e)}"
-
+        
 def run_diagnostic_agent_fallback(data_summary: str) -> str:
     """Original non-endpoint fallback function preserved to maintain exact file structure"""
     if not groq_client:
@@ -150,6 +142,7 @@ async def ingest_data(
     files: List[UploadFile] = File(...), 
     brand_name: str = Form("Generic Brand"),
     brand_tone: str = Form("Professional"),
+    user_prompt: str = Form(None), # <--- NEW PARAMETER
     db: Session = Depends(get_db)
 ):
     try:
@@ -158,28 +151,18 @@ async def ingest_data(
         all_columns = set()
         filenames = []
 
-        # Loop through all uploaded files
         for file in files:
             filenames.append(file.filename)
             contents = await file.read()
-            
             try:
                 df = pd.read_csv(io.BytesIO(contents))
                 rows = len(df)
                 cols = df.columns.tolist()
-                
                 total_rows += rows
                 all_columns.update(cols)
-                
-                # Take a clean sample of the first 3 rows from EACH file
                 sample_data_str = df.head(3).to_string()
-                
-                # Append to the massive context string for Gemini
                 combined_context.append(
-                    f"--- FILE: {file.filename} ---\n"
-                    f"Total Rows: {rows}\n"
-                    f"Columns: {cols}\n"
-                    f"Data Sample:\n{sample_data_str}\n\n"
+                    f"--- FILE: {file.filename} ---\nTotal Rows: {rows}\nColumns: {cols}\nData Sample:\n{sample_data_str}\n\n"
                 )
             except Exception as csv_err:
                 raise HTTPException(status_code=400, detail=f"Invalid CSV layout in {file.filename}: {str(csv_err)}")
@@ -187,16 +170,16 @@ async def ingest_data(
         combined_context_str = "\n".join(combined_context)
         file_names_str = ", ".join(filenames)
         
-        # Execute Gemini 3.1 Flash-Lite on the combined context
-        ai_analysis_summary = run_ingestion_agent(file_names_str, combined_context_str, brand_name)
+        # Pass the user_prompt into Agent 1
+        ai_analysis_summary = run_ingestion_agent(file_names_str, combined_context_str, brand_name, user_prompt)
         
-        # Write unified state cleanly into SQLite Database
         new_data = CampaignData(
             filename=file_names_str, 
             status="Diagnostic Queue",
             insights=ai_analysis_summary,
             brand_name=brand_name,
-            brand_tone=brand_tone
+            brand_tone=brand_tone,
+            user_prompt=user_prompt # <--- SAVE TO DATABASE
         )
         db.add(new_data)
         db.commit()
@@ -205,10 +188,7 @@ async def ingest_data(
         return {
             "status": "success",
             "agent": "Agent 1: Ingestion & Routing",
-            "metadata": {
-                "rows": total_rows,
-                "columns": list(all_columns)
-            },
+            "metadata": {"rows": total_rows, "columns": list(all_columns)},
             "insights": ai_analysis_summary,
             "record_id": new_data.id
         }
@@ -234,7 +214,11 @@ async def run_diagnostic_agent(record_id: int, db: Session = Depends(get_db)):
     Agent 1 (The Lead Quantitative Data Scientist) has provided the following structured statistical dossier:
     {record.insights}
     
-    Your task is to perform a rigorous multi-variable correlation to diagnose the single most critical, high-leverage revenue leak (e.g., LTV:CAC degradation, cohort churn velocity, payload drop-offs). 
+    User's Stated Problem: {record.user_prompt if record.user_prompt else "None provided."}
+    
+    Your task is to perform a rigorous multi-variable correlation to diagnose the single most critical, high-leverage revenue leak. 
+    If the User provided a 'Stated Problem', you must mathematically validate if their assumption is correct based on Agent 1's data, or if they are looking at the wrong bottleneck.
+    
     CRITICAL INSTRUCTION: You must completely ignore vanity metrics (likes, impressions) and focus strictly on margin-degrading bottlenecks.
     
     You must utilize a "Falsification Test" methodology. Before finalizing your diagnosis, you must formulate a hypothesis and actively attempt to mathematically disprove it using the data anomalies and blind spots provided by Agent 1.
@@ -243,13 +227,12 @@ async def run_diagnostic_agent(record_id: int, db: Session = Depends(get_db)):
     
     Follow this exact schema:
     {{
-        "falsification_test": "Your internal monologue. Formulate a primary hypothesis for the bottleneck. Then, cross-reference variables and actively try to disprove your own hypothesis based on Agent 1's data constraints.",
+        "falsification_test": "Your internal monologue. Validate or invalidate the User's Stated Problem (if provided). Formulate a primary hypothesis for the bottleneck, cross-reference variables, and actively try to disprove your own hypothesis.",
         "executive_diagnosis": "A highly authoritative, dense 3-to-4 sentence diagnosis. 1. State the High-Leverage Symptom. 2. State the Root Cause via multi-variable correlation. 3. DIRECTIVE FOR AGENT 3: End by explicitly commanding the Visualization Agent on the exact 3 metrics it MUST graph to prove this to the board."
     }}
     """
     
     try:
-        # Temperature lowered to 0.1 for strict, highly logical analytical reasoning
         response = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
@@ -259,11 +242,8 @@ async def run_diagnostic_agent(record_id: int, db: Session = Depends(get_db)):
         
         raw_text = response.choices[0].message.content
         diagnostic_data = json.loads(raw_text)
-        
-        # We extract the finalized executive diagnosis to pass down the pipeline
         diagnostic_insight = diagnostic_data.get("executive_diagnosis", raw_text)
         
-        # Update the Database State
         record.status = "Visualization Queue"
         db.commit()
         

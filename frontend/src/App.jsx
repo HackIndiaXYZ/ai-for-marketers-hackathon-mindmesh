@@ -45,7 +45,8 @@ function App() {
   const [files, setFiles] = useState([]);
   const [brandName, setBrandName] = useState("");
   const [brandTone, setBrandTone] = useState("");
-  
+  const [userContext, setUserContext] = useState("");
+
   // Pipeline UI State
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -162,7 +163,8 @@ function App() {
     
     try {
       addLog(`[Agent 1] Data Architect initiating ingest for brand: ${brandName}...`);
-      const ingestData = await uploadDataForIngestion(files, brandName, brandTone);
+      // Update this line to pass userContext:
+      const ingestData = await uploadDataForIngestion(files, brandName, brandTone, userContext);
       addLog(`[Agent 1] Complete. Parsed ${files.length} file(s) and mapped relational keys.`, "success");
       
       setActiveStep(2); 
@@ -245,18 +247,28 @@ function App() {
       <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
         
         {/* Execution Bar (Hidden on Print) */}
-        <div className="no-print" style={{ backgroundColor: '#111827', border: '1px solid #1F2937', padding: '20px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <input type="file" multiple accept=".csv" onChange={handleFileChange} style={{ color: '#9CA3AF', padding: '10px', backgroundColor: '#0B0F19', borderRadius: '6px', border: '1px solid #1F2937', fontSize: '13px' }} />
+        <div className="no-print" style={{ backgroundColor: '#111827', border: '1px solid #1F2937', padding: '20px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <input type="file" multiple accept=".csv" onChange={handleFileChange} style={{ color: '#9CA3AF', padding: '10px', backgroundColor: '#0B0F19', borderRadius: '6px', border: '1px solid #1F2937', fontSize: '13px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={runDemoMode} disabled={loading} style={{ padding: '10px 20px', backgroundColor: '#374151', color: '#FFF', border: '1px solid #4B5563', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: '0.2s' }}>
+                        Try Demo Mode
+                    </button>
+                    <button onClick={runPipelineEngine} disabled={loading} style={{ padding: '10px 30px', backgroundColor: loading ? '#EF4444' : '#0EA5E9', color: '#FFF', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '14px', transition: '0.2s' }}>
+                        {loading ? "System Engaged..." : "Execute Pipeline"}
+                    </button>
+                </div>
             </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={runDemoMode} disabled={loading} style={{ padding: '10px 20px', backgroundColor: '#374151', color: '#FFF', border: '1px solid #4B5563', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '14px', transition: '0.2s' }}>
-                    Try Demo Mode
-                </button>
-                <button onClick={runPipelineEngine} disabled={loading} style={{ padding: '10px 30px', backgroundColor: loading ? '#EF4444' : '#0EA5E9', color: '#FFF', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '14px', transition: '0.2s' }}>
-                    {loading ? "System Engaged..." : "Execute Pipeline"}
-                </button>
-            </div>
+            
+            {/* NEW: Optional User Prompt Input */}
+            <textarea 
+                value={userContext} 
+                onChange={e => setUserContext(e.target.value)}
+                placeholder="Optional: Describe your specific problem, campaign goal, or context for the AI Swarm..."
+                style={{ width: '100%', padding: '12px', backgroundColor: '#0B0F19', border: '1px solid #1F2937', borderRadius: '6px', color: '#fff', fontSize: '13px', resize: 'vertical', minHeight: '60px', outline: 'none' }}
+            />
         </div>
 
         {/* Multi-Agent Progress & Terminal Logs (Hidden on Print) */}

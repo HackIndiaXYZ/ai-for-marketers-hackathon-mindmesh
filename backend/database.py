@@ -12,7 +12,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# 3. Define the Upgraded Model (Pipeline History & Brand Memory)
+# 3. Define the Upgraded Model
 class CampaignData(Base):
     __tablename__ = "campaign_data"
     
@@ -24,8 +24,9 @@ class CampaignData(Base):
     # Brand Memory Features
     brand_name = Column(String, nullable=True, default="Unknown Brand")
     brand_tone = Column(String, nullable=True, default="Professional")
+    user_prompt = Column(Text, nullable=True) # NEW: Human-in-the-Loop context
     
-    # Saved Output States for Pipeline History & Export
+    # Saved Output States
     insights = Column(Text, nullable=True)
     dashboard_config = Column(Text, nullable=True)
     strategy_config = Column(Text, nullable=True)
@@ -36,7 +37,6 @@ class CampaignData(Base):
 # Create the tables in the database
 Base.metadata.create_all(bind=engine)
 
-# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:

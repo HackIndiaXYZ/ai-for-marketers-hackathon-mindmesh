@@ -13,7 +13,7 @@ export const checkBackendStatus = async () => {
     }
 };
 
-export const uploadDataForIngestion = async (files, brandName, brandTone) => {
+export const uploadDataForIngestion = async (files, brandName, brandTone, userPrompt) => {
     const formData = new FormData();
     
     // Append multiple files to the same 'files' key
@@ -21,9 +21,12 @@ export const uploadDataForIngestion = async (files, brandName, brandTone) => {
         formData.append('files', file); 
     });
 
-    // Inject Brand Memory into the payload
+    // Inject Brand Memory & Context into the payload
     formData.append('brand_name', brandName || "Generic Brand");
     formData.append('brand_tone', brandTone || "Professional");
+    if (userPrompt) {
+        formData.append('user_prompt', userPrompt);
+    }
 
     try {
         const response = await axios.post(`${API_URL}/api/ingest/`, formData, {
