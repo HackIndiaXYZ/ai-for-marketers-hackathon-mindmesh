@@ -93,7 +93,7 @@ def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: st
     
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-3.5-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config={"temperature": 0.1} 
         )
@@ -360,10 +360,10 @@ async def run_strategy_agent(record_id: int, req: StrategyRequest, db: Session =
     1. MACRO-SCAN: You must first evaluate how current market fatigue impacts this specific bottleneck.
     2. FRICTION ANALYSIS: Anticipate failure. List the top 3 reasons a consumer will logically reject or ignore this campaign.
     3. FRAMEWORK ROUTING: You must route this problem through ONE of the following elite frameworks to dismantle those exact consumer defenses:
-        - EUGENE SCHWARTZ (Breakthrough Advertising): Use if the problem is poor messaging. Map the audience's "Level of Awareness".
-        - ALEX HORMOZI ($100M Offers): Use if the problem is high CAC/Churn. Apply the Value Equation to create a "Grand Slam Offer".
-        - NIR EYAL (Hooked Model): Use if the problem is user retention. Design a habit-loop: Trigger -> Action -> Variable Reward.
-        - ROBERT CIALDINI (Influence): Use if the problem is brand trust. Inject Reciprocity, Scarcity, Authority, or Consensus.
+        - EUGENE SCHWARTZ (Breakthrough Advertising)
+        - ALEX HORMOZI ($100M Offers)
+        - NIR EYAL (Hooked Model)
+        - ROBERT CIALDINI (Influence)
     
     Output STRICTLY raw JSON. Do NOT use markdown formatting blocks (no ```json). 
     Follow this exact schema:
@@ -394,23 +394,28 @@ async def run_strategy_agent(record_id: int, req: StrategyRequest, db: Session =
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # Maintained at 0.7 to allow lateral thinking and creative framework application
+            # UPGRADED TO THE ELITE PRO MODEL & FORCED NATIVE JSON MODE
             response = gemini_client.models.generate_content(
-                model="gemini-3.5-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
-                config={"temperature": 0.7} 
+                config={
+                    "temperature": 0.7,
+                    "response_mime_type": "application/json" # <--- The Silver Bullet
+                } 
             )
             
             raw_text = response.text
-            import re
-            match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-            if not match:
-                raise ValueError("Agent 4 failed to format cognitive output.")
-                
-            clean_json = match.group(0)
-            strategy_config = json.loads(clean_json)
             
-            # Record saving for Pipeline History
+            # Since we forced application/json, we can load it directly. Regex kept as a fallback.
+            try:
+                strategy_config = json.loads(raw_text)
+            except json.JSONDecodeError:
+                import re
+                match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+                if not match:
+                    raise ValueError("Agent 4 failed to format cognitive output.")
+                strategy_config = json.loads(match.group(0))
+            
             record.strategy_config = json.dumps(strategy_config)
             record.status = "Validation Queue"
             db.commit()
@@ -625,7 +630,7 @@ async def run_deployment_agent(record_id: int, req: DeployRequest, db: Session =
         try:
             # Temperature at 0.6 allows for high-level creative synthesis while respecting strict formatting rules
             response = gemini_client.models.generate_content(
-                model="gemini-3.5-flash",
+                model="gemini-2.5-flash",
                 contents=prompt,
                 config={"temperature": 0.6} 
             )
