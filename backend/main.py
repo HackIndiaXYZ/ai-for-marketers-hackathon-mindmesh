@@ -62,40 +62,56 @@ class DeployRequest(BaseModel):
     strategy: str    
 
 def run_ingestion_agent(file_names: str, multi_file_context: str, brand_name: str) -> str:
-    """
-    Agent 1: Enterprise Data Profiler & Relational Architect
-    Powered by Gemini to interlink datasets and run hygiene checks.
-    """
+    """Agent 1: Lead Quantitative Data Scientist (Predictive Feature Engineer)"""
     if not gemini_client:
         return f"Ingested {file_names} successfully (Gemini API Key missing, running in local fallback mode)."
     
     prompt = f"""
-    You are Agent 1, the Principal Data Architect for an autonomous Marketing OS.
-    The user has uploaded a batch of raw marketing datasets for the brand: {brand_name}. 
+    You are Agent 1, the Lead Quantitative Data Scientist and Predictive Feature Engineer for {brand_name}.
+    You are reviewing a batch of raw marketing datasets. Your objective is to engineer predictive features, identify statistical anomalies, and prepare a strict quantitative architecture for the diagnostic team.
     
     Files Uploaded: {file_names}
     
     Data Schema & Samples:
     {multi_file_context}
     
-    CRITICAL INSTRUCTION: Perform a deep Forensic Data Profile. Do not just give a generic summary.
-    Output a highly professional, structured brief containing:
+    CRITICAL INSTRUCTIONS:
+    You must perform a rigorous Forensic Data Profile. You are evaluating this data to find leading indicators of revenue loss.
+    Output STRICTLY valid JSON. Do not use markdown formatting blocks (no ```json).
     
-    1. BUSINESS THEME: What is the exact business context of this data? (e.g., SaaS Retention, E-commerce Acquisition, B2B Lead Gen).
-    2. RELATIONAL MAP: How do these files logically link together? Identify the probable primary/foreign keys across the tables.
-    3. DATA HYGIENE: Are there missing values, formatting errors, or messy columns visible in the sample?
-    4. SIGNAL EXTRACTION: Based on the column headers, what is the most critical financial story this data is hiding?
-    
-    Format this as a dense, authoritative text brief. This brief will be fed directly into the neural network of Agent 2.
+    Follow this exact JSON schema:
+    {{
+        "statistical_variance_monologue": "Your internal Chain-of-Thought detailing which columns hold the highest predictive weight for revenue leakage and why.",
+        "business_theme": "The exact quantitative business context (e.g., B2B SaaS Retention, High-Volume E-commerce Acquisition).",
+        "relational_map": "Identification of probable primary/foreign keys and how the datasets interconnect structurally.",
+        "data_hygiene_and_anomalies": "Specific assessment of missing values, formatting errors, or statistical outliers visible in the sample.",
+        "critical_blind_spots": "Identify exactly what necessary data is missing from the environment (e.g., 'We have acquisition cost, but lack time-to-conversion data').",
+        "signal_extraction": "The single most critical financial story or risk vector hidden in this structural architecture."
+    }}
     """
     
     try:
+        # Temperature dropped to 0.1 to enforce strict, deterministic statistical analysis
         response = gemini_client.models.generate_content(
-            model="gemini-3.1-flash-lite",
+            model="gemini-3.5-flash",
             contents=prompt,
-            config={"temperature": 0.2} # Low temperature for strict, factual data analysis
+            config={"temperature": 0.1} 
         )
-        return response.text
+        
+        raw_text = response.text
+        
+        import re
+        match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if not match:
+            # Fallback parsing in case the LLM breaks schema
+            return raw_text
+            
+        clean_json = match.group(0)
+        
+        # Returning the raw JSON string ensures Agent 2 receives a highly structured, 
+        # machine-readable dossier for its Root Cause Analysis.
+        return clean_json
+        
     except Exception as e:
         logger.error(f"Gemini API Execution Error: {str(e)}")
         return f"Parsed data structure successfully, but Gemini API returned an error: {str(e)}"
@@ -205,10 +221,7 @@ async def ingest_data(
 
 @app.post("/api/diagnose/{record_id}")
 async def run_diagnostic_agent(record_id: int, db: Session = Depends(get_db)):
-    """
-    Agent 2: Forensic Revenue Analyst (Root Cause Analysis)
-    Strictly powered by Groq for high-speed anomaly detection.
-    """
+    """Agent 2: Forensic Growth Analyst (Multi-Variable Correlation)"""
     record = db.query(CampaignData).filter(CampaignData.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Database record not found.")
@@ -217,32 +230,38 @@ async def run_diagnostic_agent(record_id: int, db: Session = Depends(get_db)):
         return {"status": "error", "message": "Groq API Key missing. Cannot run Agent 2."}
 
     prompt = f"""
-    You are Agent 2, an elite Forensic Revenue Analyst and Data Scientist for the brand {record.brand_name}.
-    Agent 1 has profiled the raw database and provided this architectural context:
+    You are Agent 2, an elite Forensic Growth Analyst and Senior Data Scientist for the brand {record.brand_name}.
+    Agent 1 (The Lead Quantitative Data Scientist) has provided the following structured statistical dossier:
     {record.insights}
     
-    Your task is to diagnose the single most critical marketing bottleneck or revenue leak.
+    Your task is to perform a rigorous multi-variable correlation to diagnose the single most critical, high-leverage revenue leak (e.g., LTV:CAC degradation, cohort churn velocity, payload drop-offs). 
+    CRITICAL INSTRUCTION: You must completely ignore vanity metrics (likes, impressions) and focus strictly on margin-degrading bottlenecks.
     
-    CRITICAL INSTRUCTION: Do not just guess. You must perform a logical "Root Cause Analysis" based ONLY on the data context provided.
+    You must utilize a "Falsification Test" methodology. Before finalizing your diagnosis, you must formulate a hypothesis and actively attempt to mathematically disprove it using the data anomalies and blind spots provided by Agent 1.
     
-    Write a highly authoritative, dense 3-to-4 sentence diagnosis that includes:
-    1. The Primary Symptom (e.g., Bleeding LTV, Spiking CAC, Funnel Drop-off).
-    2. The Deducted Root Cause based on the available data parameters.
-    3. DIRECTIVE FOR AGENT 3: End your diagnosis by explicitly commanding the Visualization Agent on the exact 3 metrics it MUST graph to prove this diagnosis to the board.
+    Output STRICTLY valid JSON. Do not use markdown formatting blocks (no ```json).
     
-    Do not use JSON. Output this as a professional, ruthless executive summary paragraph.
+    Follow this exact schema:
+    {{
+        "falsification_test": "Your internal monologue. Formulate a primary hypothesis for the bottleneck. Then, cross-reference variables and actively try to disprove your own hypothesis based on Agent 1's data constraints.",
+        "executive_diagnosis": "A highly authoritative, dense 3-to-4 sentence diagnosis. 1. State the High-Leverage Symptom. 2. State the Root Cause via multi-variable correlation. 3. DIRECTIVE FOR AGENT 3: End by explicitly commanding the Visualization Agent on the exact 3 metrics it MUST graph to prove this to the board."
+    }}
     """
     
     try:
-        # Execute Groq Engine instantly
+        # Temperature lowered to 0.1 for strict, highly logical analytical reasoning
         response = groq_client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama-3.3-70b-versatile",
-            temperature=0.3, # Slight variance to deduce the root cause creatively
-            max_tokens=250
+            temperature=0.1, 
+            response_format={"type": "json_object"}
         )
         
-        diagnostic_insight = response.choices[0].message.content
+        raw_text = response.choices[0].message.content
+        diagnostic_data = json.loads(raw_text)
+        
+        # We extract the finalized executive diagnosis to pass down the pipeline
+        diagnostic_insight = diagnostic_data.get("executive_diagnosis", raw_text)
         
         # Update the Database State
         record.status = "Visualization Queue"
@@ -250,17 +269,18 @@ async def run_diagnostic_agent(record_id: int, db: Session = Depends(get_db)):
         
         return {
             "status": "success",
-            "agent": "Agent 2: Diagnostic Bottleneck Discovery",
-            "diagnosis": diagnostic_insight
+            "agent": "Agent 2: Forensic Growth Analyst",
+            "diagnosis": diagnostic_insight,
+            "falsification_log": diagnostic_data.get("falsification_test", "")
         }
         
     except Exception as e:
         logger.error(f"Groq Execution Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Agent 2 failed: {str(e)}")        
+        raise HTTPException(status_code=500, detail=f"Agent 2 failed: {str(e)}")
 
 @app.post("/api/visualize/{record_id}")
 async def run_visualization_agent(record_id: int, req: VisualizeRequest, db: Session = Depends(get_db)):
-    """Agent 3: Dynamic Data Visualization Architect (With Insights & New Charts)."""
+    """Agent 3: Executive Data Storyteller (Cognitive Load Reduction)"""
     record = db.query(CampaignData).filter(CampaignData.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Database record not found.")
@@ -269,20 +289,22 @@ async def run_visualization_agent(record_id: int, req: VisualizeRequest, db: Ses
         return {"status": "error", "message": "Groq API Key missing."}
 
     prompt = f"""
-    You are Agent 3, an elite Principal Data Visualization Architect.
-    Agent 2 identified this specific business bottleneck: "{req.diagnosis}"
+    You are Agent 3, an elite Executive Data Storyteller and Principal Visualization Architect for {record.brand_name}.
+    Agent 2 (The Forensic Growth Analyst) has dictated the following high-leverage business bottleneck: 
+    "{req.diagnosis}"
     
-    Your task is to design a dynamic, highly contextual dashboard to visualize this exact problem.
+    Your task is to design a dynamic, highly contextual dashboard that proves this diagnosis to the Board of Directors instantly.
     
-    CRITICAL RULES:
-    1. Output strictly valid JSON.
-    2. Choose 2 to 4 highly relevant KPIs.
-    3. Choose 1 to 3 highly relevant Charts.
-    4. You MUST choose the best chartType: "BarChart" (comparisons), "LineChart" (trends), "AreaChart" (volume), or "PieChart" (segmentation/distribution).
-    5. Write a 2-3 sentence 'dashboardInsight' explaining the correlation between these charts and what they reveal about the business.
+    CRITICAL INSTRUCTIONS:
+    1. PREVENT COGNITIVE OVERLOAD: Do not output random charts. You must select chart architectures that directly answer the core financial question.
+    2. PREVENT VISUAL DISTORTION: When generating the 'data' arrays, you must dynamically scale the axes logically and group extreme outliers into a single category (e.g., "Other") so the graph does not look mathematically distorted.
+    3. You MUST choose the best chartType from this strict list: "BarChart" (for comparisons), "LineChart" (for trends over time), "AreaChart" (for volume), or "PieChart" (for segmentation/distribution).
+    
+    Output STRICTLY valid JSON. Do not use markdown formatting blocks (no ```json).
     
     Schema to follow:
     {{
+        "cognitive_load_assessment": "Your internal monologue justifying WHY this specific chart architecture is the fastest way for a human brain to process the anomaly found by Agent 2, and explaining how you have structured the data to prevent visual distortion.",
         "kpis": [
             {{"label": "Specific Metric", "value": "Number", "trend": "+/- %"}}
         ],
@@ -290,23 +312,24 @@ async def run_visualization_agent(record_id: int, req: VisualizeRequest, db: Ses
             {{
                 "chartType": "PieChart", 
                 "title": "Segment Distribution",
-                "xAxisKey": "category",
+                "xAxisKey": "name",
                 "dataKey": "value",
-                "data": [ {{"category": "Segment A", "value": 25}}, {{"category": "Segment B", "value": 40}} ]
+                "data": [ {{"name": "Segment A", "value": 25}}, {{"name": "Segment B", "value": 40}} ]
             }}
         ],
-        "dashboardInsight": "The data indicates that while overall volume is stable, Segment B is driving 60% of the Customer Acquisition Cost, suggesting a severe mismatch in targeting."
+        "dashboardInsight": "A dense 2-3 sentence executive summary explaining the correlation between these charts and the financial reality of the business."
     }}
     """
     
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            # Temperature kept at 0.3 to allow the AI to logically generate sample data points while strictly adhering to JSON format
             response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.3-70b-versatile",
                 temperature=0.3,
-                max_tokens=800,
+                max_tokens=1000,
                 response_format={"type": "json_object"}
             )
             
@@ -320,7 +343,7 @@ async def run_visualization_agent(record_id: int, req: VisualizeRequest, db: Ses
             
             return {
                 "status": "success",
-                "agent": "Agent 3: Dynamic Visualization",
+                "agent": "Agent 3: Executive Data Storyteller",
                 "chart_config": dashboard_config
             }
             
@@ -336,7 +359,7 @@ async def run_visualization_agent(record_id: int, req: VisualizeRequest, db: Ses
 
 @app.post("/api/strategy/{record_id}")
 async def run_strategy_agent(record_id: int, req: StrategyRequest, db: Session = Depends(get_db)):
-    """Agent 4: Cognitive CMO using Adaptive Framework Routing."""
+    """Agent 4: Chief Revenue & Behavioral Officer (Macro-Environment & Friction Analysis)"""
     record = db.query(CampaignData).filter(CampaignData.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Database record not found.")
@@ -344,28 +367,36 @@ async def run_strategy_agent(record_id: int, req: StrategyRequest, db: Session =
     if not gemini_client:
         return {"status": "error", "message": "Gemini API Key missing."}
 
-    # THE MASTER GURU PROMPT - Fully preserved with Brand Name injected
     prompt = f"""
-    You are Agent 4, an elite Chief Marketing Officer and Behavioral Psychologist for the brand {record.brand_name}.
-    Agent 2 has diagnosed the following critical business bottleneck: "{req.diagnosis}"
+    You are Agent 4, an elite Chief Revenue & Behavioral Officer for the brand {record.brand_name}.
+    You are operating in the brutal reality of the 2026 market environment: AI-saturated feeds, zero-click platform architectures, and hyper-skeptical consumers who are entirely blind to traditional marketing.
+    
+    Agent 2 (Forensic Growth Analyst) has diagnosed the following critical business bottleneck: 
+    "{req.diagnosis}"
     
     Your directive is to architect a multi-million-dollar marketing campaign to solve this exact bottleneck.
     
-    CRITICAL INSTRUCTION: You must route this problem through ONE of the following elite frameworks:
-    1. EUGENE SCHWARTZ (Breakthrough Advertising): Use if the problem is poor messaging or low conversion. Map the audience's "Level of Awareness" (Unaware, Problem Aware, Solution Aware, Product Aware, Most Aware) and match the hook to their state.
-    2. ALEX HORMOZI ($100M Offers): Use if the problem is high Customer Acquisition Cost (CAC) or high churn. Apply the Value Equation: (Dream Outcome x Perceived Likelihood of Achievement) / (Time Delay x Effort & Sacrifice).
-    3. NIR EYAL (Hooked Model): Use if the problem is user retention or engagement drop-offs. Design a habit-loop: Trigger -> Action -> Variable Reward -> Investment.
-    4. ROBERT CIALDINI (Influence): Use if the problem is brand trust or cart abandonment. Inject Reciprocity, Scarcity, Authority, Consistency, Liking, or Consensus.
-    
-    STEP 1: Perform Chain-of-Thought reasoning.
-    STEP 2: Generate the final campaign architecture.
+    CRITICAL INSTRUCTIONS:
+    1. MACRO-SCAN: You must first evaluate how current market fatigue impacts this specific bottleneck.
+    2. FRICTION ANALYSIS: Anticipate failure. List the top 3 reasons a consumer will logically reject or ignore this campaign.
+    3. FRAMEWORK ROUTING: You must route this problem through ONE of the following elite frameworks to dismantle those exact consumer defenses:
+        - EUGENE SCHWARTZ (Breakthrough Advertising): Use if the problem is poor messaging. Map the audience's "Level of Awareness".
+        - ALEX HORMOZI ($100M Offers): Use if the problem is high CAC/Churn. Apply the Value Equation to create a "Grand Slam Offer".
+        - NIR EYAL (Hooked Model): Use if the problem is user retention. Design a habit-loop: Trigger -> Action -> Variable Reward.
+        - ROBERT CIALDINI (Influence): Use if the problem is brand trust. Inject Reciprocity, Scarcity, Authority, or Consensus.
     
     Output STRICTLY raw JSON. Do NOT use markdown formatting blocks (no ```json). 
     Follow this exact schema:
     {{
+        "macro_environment_scan": "Analyze how current market fatigue, AI-saturation, and zero-click architectures specifically impact this target audience.",
+        "friction_point_analysis": [
+            {{"rejection_reason": "Specific logical defense 1", "dismantling_strategy": "How we bypass this..."}},
+            {{"rejection_reason": "Specific logical defense 2", "dismantling_strategy": "How we bypass this..."}},
+            {{"rejection_reason": "Specific logical defense 3", "dismantling_strategy": "How we bypass this..."}}
+        ],
         "cognitive_reasoning": {{
             "framework_selected": "Name of the Guru Framework",
-            "justification": "Why this framework perfectly solves the bottleneck (max 2 sentences)",
+            "justification": "Why this framework perfectly dismantles the friction points above (max 2 sentences)",
             "psychological_angle": "The core human emotion or bias we are targeting"
         }},
         "campaignName": "A catchy, aggressive, professional campaign name",
@@ -383,9 +414,9 @@ async def run_strategy_agent(record_id: int, req: StrategyRequest, db: Session =
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # UPGRADED TEMPERATURE: Raised to 0.7 to unlock lateral thinking and variance
+            # Maintained at 0.7 to allow lateral thinking and creative framework application
             response = gemini_client.models.generate_content(
-                model="gemini-3.1-flash-lite",
+                model="gemini-3.5-flash",
                 contents=prompt,
                 config={"temperature": 0.7} 
             )
@@ -406,7 +437,7 @@ async def run_strategy_agent(record_id: int, req: StrategyRequest, db: Session =
             
             return {
                 "status": "success",
-                "agent": "Agent 4: Cognitive Strategy Architect",
+                "agent": "Agent 4: Chief Revenue & Behavioral Officer",
                 "strategy": strategy_config
             }
             
@@ -427,34 +458,39 @@ async def run_strategy_agent_duplicate(record_id: int, req: StrategyRequest, db:
 
 @app.post("/api/audit/{record_id}")
 async def run_auditor_agent(record_id: int, req: AuditRequest, db: Session = Depends(get_db)):
-    """Agent 5: Groq acts as the aggressive Red Team Auditor."""
+    """Agent 5: Private Equity Risk Partner (Capital & Margin Defense)"""
     record = db.query(CampaignData).filter(CampaignData.id == record_id).first()
     if not record:
          raise HTTPException(status_code=404, detail="Database record not found.")
     
     prompt = f"""
-    You are Agent 5, an aggressive, cynical Chief Revenue Officer and Brand Protector for the brand {record.brand_name}.
-    Your job is to "Red Team" (stress-test and ruthlessly audit) this AI-generated marketing strategy:
+    You are Agent 5, an aggressive Private Equity Risk Partner and Board Member for {record.brand_name}.
+    Your job is to ruthlessly stress-test and audit this AI-generated marketing strategy proposed by your CMO:
     
     {req.strategy}
     
     CRITICAL INSTRUCTIONS:
-    1. SCAM CHECK: If the strategy sounds like a hyper-aggressive, cheap internet scam, call it out. The tone must be realistic for a modern, high-trust enterprise environment.
-    2. ORIGINALITY CHECK: If the strategy just relies on "giving a generic 10% discount," penalize it. We want psychological value, not lazy price slashing.
-    3. FINANCIAL REALISM: Analyze if the Customer Acquisition Cost (CAC) will destroy margins based on this execution plan.
+    1. CAPITAL PRESERVATION: You do not care about vanity metrics. You only care about unit economics, margin defense, and profitability. 
+    2. DISCOUNTING PENALTY: If the strategy relies on heavy discounting, lazy price slashing, or unsustainable burn rates to acquire users, you MUST flag it as a margin-degrading risk and demand a structural pivot. We want psychological value creation, not a race to the bottom.
+    3. CAC PAYBACK: Systematically evaluate the implied Customer Acquisition Cost (CAC) payback period. If the timeline to recoup capital is too long, reject the strategy.
+    4. BRAND SAFETY: If the strategy sounds like a cheap, hyper-aggressive internet scam, kill it.
     
     Output STRICTLY raw JSON. Do NOT use markdown formatting blocks (no ```json). 
     Follow this exact schema:
     {{
+        "risk_of_ruin_calculation": "Your internal monologue. Systematically evaluate the implied CAC payback period, cash burn sustainability, and check if the strategy relies on margin-destroying discounts.",
         "approvalStatus": "APPROVED, APPROVED WITH CONDITIONS, or REJECTED",
         "confidenceScore": 85,
         "auditNotes": [
-            "Brutally honest note about the psychological angle...",
-            "Critique of the originality or tone (e.g., 'Sounds too scammy, tone down the urgency')..."
+            "Brutally honest note on margin viability...",
+            "Critique of the psychological originality or tone..."
         ],
         "riskFactors": [
-            "Specific financial risk (e.g., margin compression)...",
+            "Specific financial risk (e.g., margin compression due to discounting)...",
             "Specific brand risk (e.g., audience fatigue)..."
+        ],
+        "pivot_demands": [
+            "If rejected or conditional, what must structurally change to protect the firm's capital."
         ]
     }}
     """
@@ -462,24 +498,16 @@ async def run_auditor_agent(record_id: int, req: AuditRequest, db: Session = Dep
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            # We use temperature 0.1 for the Auditor to keep it highly logical and strict
+            # Maintained at 0.1 for strict, ruthless, hyper-logical financial evaluation
             response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.3-70b-versatile",
                 temperature=0.1,
-                max_tokens=500
+                response_format={"type": "json_object"}
             )
             
             raw_text = response.choices[0].message.content
-            
-            # BULLETPROOF PARSING: Extract only the JSON
-            import re
-            match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-            if not match:
-                raise ValueError("Agent 5 failed to format audit output.")
-                
-            clean_json = match.group(0)
-            audit_config = json.loads(clean_json)
+            audit_config = json.loads(raw_text)
             
             # Record saving for Pipeline History
             record.audit_config = json.dumps(audit_config)
@@ -504,45 +532,48 @@ async def run_auditor_agent(record_id: int, req: AuditRequest, db: Session = Dep
 
 @app.post("/api/simulate/{record_id}")
 async def run_simulation_agent(record_id: int, req: SimulationRequest, db: Session = Depends(get_db)):
-    """Agent 6: Groq performs Bayesian Scenario Modeling (Native JSON Mode)."""
+    """Agent 6: Bayesian Financial Modeler (Variable Sensitivity Analysis)"""
     record = db.query(CampaignData).filter(CampaignData.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Database record not found.")
     
     prompt = f"""
-    You are Agent 6, an elite Quantitative Market Analyst.
-    Review this finalized marketing strategy for the brand {record.brand_name}: 
+    You are Agent 6, an elite Bayesian Financial Modeler and Quantitative Market Analyst for {record.brand_name}.
+    Review this finalized marketing strategy: 
     {req.strategy}
     
-    Perform a Probabilistic Market Simulation (Bayesian Scenario Modeling).
+    Perform a Probabilistic Market Simulation (Bayesian Scenario Modeling) to dictate capital allocation.
     
     CRITICAL INSTRUCTIONS:
-    - Output strictly valid JSON.
-    - Do NOT use unescaped double quotes inside your text values.
+    1. STRICT QUANTITATIVE LOGIC: Do not output arbitrary ROI percentages. Base your P90 (Best Case), P50 (Expected/Baseline), and P10 (Worst Case) scenarios on realistic statistical confidence intervals and historical B2B/B2C baseline assumptions.
+    2. SENSITIVITY ANALYSIS: You must identify the single metric (e.g., Click-Through Rate, Sales Conversion, Onboarding Drop-off) that has the highest mathematical impact on shifting the outcome from the P50 baseline down to the P10 worst-case scenario.
+    3. STERILE OUTPUT: The output must be highly sterile, probabilistic data points suitable for immediate financial allocation decisions by a CFO or Private Equity board.
+    
+    Output STRICTLY valid JSON. Do NOT use unescaped double quotes inside your text values. Do NOT use markdown formatting blocks (no ```json).
     
     Schema to follow:
     {{
+        "variable_sensitivity_analysis": "Your internal quantitative monologue. Identify the most sensitive mathematical lever in this strategy and explain exactly how a variance in this metric cascades into a P10 failure.",
         "scenarios": {{
             "P90": {{ "ctr": "4.8%", "conversion": "3.5%", "roi": "210%" }},
             "P50": {{ "ctr": "2.1%", "conversion": "1.2%", "roi": "45%" }},
             "P10": {{ "ctr": "0.6%", "conversion": "0.3%", "roi": "-35%" }}
         }},
-        "simulationNotes": "Explain the primary variable that shifts the timeline."
+        "simulationNotes": "A sterile, 2-sentence quantitative summary of the capital allocation risk."
     }}
     """
     
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            # Temperature locked at 0.1 for strict mathematical compliance and minimal hallucination
             response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.3-70b-versatile",
-                temperature=0.1, # Lowered to 0.1 for strict mathematical compliance
-                max_tokens=400,
-                response_format={"type": "json_object"} # <-- THE SILVER BULLET
+                temperature=0.1, 
+                response_format={"type": "json_object"} 
             )
             
-            # Because of JSON mode, we no longer need Regex. We can parse it directly.
             raw_text = response.choices[0].message.content
             sim_config = json.loads(raw_text)
             
@@ -565,39 +596,40 @@ async def run_simulation_agent(record_id: int, req: SimulationRequest, db: Sessi
                 continue
                 
             logger.error(f"Agent 6 Execution Error: {error_str}")
-            raise HTTPException(status_code=500, detail=f"Agent 6 crashed: {error_str}")        
+            raise HTTPException(status_code=500, detail=f"Agent 6 crashed: {error_str}")
 
 @app.post("/api/deploy/{record_id}")
 async def run_deployment_agent(record_id: int, req: DeployRequest, db: Session = Depends(get_db)):
-    """Agent 7: Autonomous Multi-Channel Creative Director."""
+    """Agent 7: Media Psychology Director (Native Platform & Saturation Logic)"""
     record = db.query(CampaignData).filter(CampaignData.id == record_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Database record not found.")
     
     prompt = f"""
-    You are Agent 7, an elite Creative Director and Direct-Response Copywriter for the brand {record.brand_name}.
+    You are Agent 7, an elite Media Psychology Director and Direct-Response Copywriter for the brand {record.brand_name}.
     Your brand tone and voice guidelines strictly dictate a '{record.brand_tone}' approach.
     You have been handed this finalized marketing strategy: 
     {req.strategy}
     
-    CRITICAL INSTRUCTION: DO NOT use a fixed template. You must AUTONOMOUSLY DECIDE the 3 to 4 best marketing channels to execute this strategy. 
-    (Examples: B2B LinkedIn Outreach, TikTok Video Script, Direct Mail Letter, Webinar Outline, SEO Blog Post, Influencer Brief, Realistic Campaign Brief, Customer Engagement Plans, etc.)
-    
-    STEP 1: Perform Chain-of-Thought reasoning to justify your channel selection.
-    STEP 2: Write the high-converting copy for those specific channels.
+    CRITICAL INSTRUCTIONS:
+    1. NATIVE PSYCHOLOGY: Do not use generic copywriting formulas. Focus on pattern interrupts, rapid time-to-value compression, and zero-friction conversion architectures.
+    2. CHANNEL SELECTION: Autonomously decide the 3 to 4 best marketing channels.
+    3. BRAND SAFETY: Strictly enforce brand safety. Ensure all generated copy is highly persuasive without resorting to cheap internet marketing tactics or manipulative formatting.
+    4. STRICT TEXT REQUIREMENT: You must absolutely exclude all emojis from your reasoning and the generated assets. The output must remain entirely text-based, sterile, and professional.
     
     Output STRICTLY raw JSON. Do NOT use markdown formatting blocks (no ```json).
     Follow this exact schema:
     {{
+        "channel_saturation_logic": "Your internal monologue justifying why the selected mediums have the highest probability of bypassing consumer ad-blindness.",
         "copywriting_reasoning": {{
             "psychological_hook": "Explain the core human emotion/bias this copy triggers.",
-            "channel_strategy": "Explain WHY you autonomously chose these specific channels for this audience."
+            "conversion_architecture": "Explain how the copy compresses time-to-value and removes friction."
         }},
         "assets": [
             {{
                 "channel": "e.g., TikTok Video Script",
                 "assetName": "e.g., The 'Contrarian Hook' Reel",
-                "content": "The full script, direct-response copy, or outline. Use short paragraphs. Agitate pain, present solution, strong CTA."
+                "content": "The full script, direct-response copy, or outline. Use short paragraphs. Agitate pain, present solution, strong CTA. (NO EMOJIS ALLOWED)."
             }},
             {{
                 "channel": "e.g., B2B Cold LinkedIn",
@@ -611,10 +643,11 @@ async def run_deployment_agent(record_id: int, req: DeployRequest, db: Session =
     max_retries = 3
     for attempt in range(max_retries):
         try:
+            # Temperature at 0.6 allows for high-level creative synthesis while respecting strict formatting rules
             response = gemini_client.models.generate_content(
-                model="gemini-3.1-flash-lite",
+                model="gemini-3.5-flash",
                 contents=prompt,
-                config={"temperature": 0.6} # High enough to be creatively brilliant, low enough to stay on schema
+                config={"temperature": 0.6} 
             )
             
             raw_text = response.text
