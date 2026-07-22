@@ -18,13 +18,13 @@ Furthermore, companies are falling into the "generative AI trap" by relying on i
 
 APEX OS is powered by a chain of 7 specialized agents, dynamically routing context between **Google Gemini** and **Groq (Llama 3.3)** engines.
 
-1. **Agent 1: Forensic Data Profiler (Gemini)** - Ingests raw CSVs, maps relational databases, and extracts the core financial signal hidden in the data architecture.
-2. **Agent 2: Diagnostic Engine (Groq)** - Performs Root Cause Analysis (RCA) to identify the single biggest revenue leak and explicitly commands the visualizer on what to graph.
-3. **Agent 3: Dynamic Visualizer Architect (Groq)** - Autonomously dictates React UI components (Line, Area, Bar, Pie charts) and maps custom axes without rigid templates.
-4. **Agent 4: Cognitive CMO (Gemini)** - Dynamically routes the diagnosis through history's greatest marketing frameworks (Hormozi, Schwartz, Cialdini, Eyal) to build a psychological strategy.
-5. **Agent 5: QA Red Team (Groq)** - Acts as a cynical auditor, stress-testing the strategy for financial viability, brand safety, and originality.
-6. **Agent 6: Quant Simulator (Groq)** - Performs Bayesian probabilistic modeling to generate P90 (Best), P50 (Expected), and P10 (Worst) ROI timelines.
-7. **Agent 7: Elite Creative Director (Gemini)** - Abandons fixed templates to autonomously decide the 3-4 best marketing channels (e.g., LinkedIn outreach, TikTok scripts, Direct Mail) and synthesizes the final assets.
+1. **Agent 1: Forensic Data Profiler** - Ingests raw CSVs, maps relational databases, and extracts the core financial signal hidden in the data architecture.
+2. **Agent 2: Diagnostic Engine** - Performs Root Cause Analysis (RCA) to identify the single biggest revenue leak and explicitly commands the visualizer on what to graph.
+3. **Agent 3: Dynamic Visualizer Architect** - Autonomously dictates React UI components (Line, Area, Bar, Pie charts) and maps custom axes without rigid templates.
+4. **Agent 4: Cognitive CMO** - Dynamically routes the diagnosis through history's greatest marketing frameworks (Hormozi, Schwartz, Cialdini, Eyal) to build a psychological strategy.
+5. **Agent 5: QA Red Team** - Acts as a cynical auditor, stress-testing the strategy for financial viability, brand safety, and originality.
+6. **Agent 6: Quant Simulator** - Performs Bayesian probabilistic modeling to generate P90 (Best), P50 (Expected), and P10 (Worst) ROI timelines.
+7. **Agent 7: Elite Creative Director** - Abandons fixed templates to autonomously decide the 3-4 best marketing channels (e.g., LinkedIn outreach, TikTok scripts, Direct Mail) and synthesizes the final assets.
 
 ---
 
